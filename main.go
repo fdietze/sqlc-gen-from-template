@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os/exec"
+	"strings"
 	"text/template"
 
 	"github.com/sqlc-dev/plugin-sdk-go/codegen"
@@ -19,6 +21,7 @@ func main() {
 type Options struct {
 	QueryTemplate      string `json:"query_template" yaml:"query_template"`
 	QueryFileExtension string `json:"query_file_extension" yaml:"query_file_extension"`
+	FormatterCommand   string `json:"formatter_cmd" yaml:"formatter_cmd"`
 	Out                string `json:"out" yaml:"out"`
 }
 
@@ -51,6 +54,20 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 		err = tmpl.Execute(&buf, query)
 		if err != nil {
 			log.Fatalf("Error executing template: %v", err)
+		}
+
+		if options.FormatterCommand != "" {
+			// log.Fatalf("PATH:%s", os.Getenv("PATH"))
+			cmd_parts := strings.Split(options.FormatterCommand, " ")
+			execCommand := exec.Command(cmd_parts[0], cmd_parts[1:]...)
+			execCommand.Stdin = bytes.NewReader(buf.Bytes())
+			var output bytes.Buffer
+			execCommand.Stdout = &output
+			if err := execCommand.Run(); err != nil {
+				log.Fatalf("Error executing formatter command: %v", err)
+			}
+
+			buf = output
 		}
 
 		resp.Files = append(resp.Files, &plugin.File{
