@@ -38,7 +38,7 @@ sql:
     - out: backend/src/queries
       plugin: sqlc-gen-from-template
       options:
-        query_template: "query_template.gotmpl"
+        query_template: "query_template.go.tmpl"
         query_file_extension: "scala"
         # optional formatter command to format generated code
         formatter_cmd: ".devbox/nix/profile/default/bin/scalafmt --stdin"
@@ -61,8 +61,8 @@ from post
 where parent_id = ?;
 ```
 
-`query_template.gotmpl`
-```gotmpl
+`query_template.go.tmpl`
+```tmpl
 {{- /* 
 https://pkg.go.dev/text/template
 https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto
