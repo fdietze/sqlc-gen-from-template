@@ -21,5 +21,12 @@
         devShells = {
           default = with pkgs; pkgs.mkShellNoCC { buildInputs = [ go ]; };
         };
+        packages.default = pkgs.buildGoModule {
+          pname = "sqlc-gen-from-template";
+          version = "0.1.0";
+          src = ./.;
+          vendorHash = "sha256-NsE42mhU5ekNJUu9zFNK/FCJ8S1wB9teHqqSHLKGVyw=";
+          buildInputs = with pkgs; [ go ];
+        };
       });
 }
