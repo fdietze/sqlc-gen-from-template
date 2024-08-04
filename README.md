@@ -2,6 +2,8 @@
 
 [sqlc](https://sqlc.dev/) plugin to generate type-safe code for SQL queries using a template.
 
+Related project: [cornerman/scala-db-codegen](https://github.com/cornerman/scala-db-codegen)
+
 ## Installation
 
 I recommend using [devbox](https://www.jetpack.io/devbox) and installing this plugin into your project using a flake: 
@@ -132,7 +134,7 @@ def {{.Name}}({{range .Params}}
 }
 ```
 
-Generated code:
+Running `sqlc generate` generates files for every query:
 
 `getReplyIds.scala`
 ```scala
