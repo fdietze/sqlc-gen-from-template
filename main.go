@@ -19,10 +19,10 @@ func main() {
 }
 
 type Options struct {
-	QueryTemplate      string `json:"query_template" yaml:"query_template"`
-	QueryFileExtension string `json:"query_file_extension" yaml:"query_file_extension"`
-	FormatterCommand   string `json:"formatter_cmd" yaml:"formatter_cmd"`
-	Out                string `json:"out" yaml:"out"`
+	Template         string `json:"template" yaml:"template"`
+	Filename         string `json:"filename" yaml:"filename"`
+	FormatterCommand string `json:"formatter_cmd" yaml:"formatter_cmd"`
+	Out              string `json:"out" yaml:"out"`
 }
 
 func parseOpts(req *plugin.GenerateRequest) (*Options, error) {
@@ -40,7 +40,7 @@ func parseOpts(req *plugin.GenerateRequest) (*Options, error) {
 func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.GenerateResponse, error) {
 	// fmt.Println(req)
 	options, _ := parseOpts(req)
-	templateFileName := options.QueryTemplate
+	templateFileName := options.Template
 
 	tmpl, err := template.ParseFiles(templateFileName)
 	if err != nil {
@@ -49,32 +49,29 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 
 	resp := plugin.GenerateResponse{}
 
-	for _, query := range req.Queries {
-		var buf bytes.Buffer
-		err = tmpl.Execute(&buf, query)
-		if err != nil {
-			log.Fatalf("Error executing template: %v", err)
-		}
-
-		if options.FormatterCommand != "" {
-			// log.Fatalf("PATH:%s", os.Getenv("PATH"))
-			cmd_parts := strings.Split(options.FormatterCommand, " ")
-			execCommand := exec.Command(cmd_parts[0], cmd_parts[1:]...)
-			execCommand.Stdin = bytes.NewReader(buf.Bytes())
-			var output bytes.Buffer
-			execCommand.Stdout = &output
-			if err := execCommand.Run(); err != nil {
-				log.Fatalf("Error executing formatter command: %v", err)
-			}
-
-			buf = output
-		}
-
-		resp.Files = append(resp.Files, &plugin.File{
-			Name:     fmt.Sprintf("%s.%s", query.Name, options.QueryFileExtension),
-			Contents: buf.Bytes(),
-		})
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, req)
+	if err != nil {
+		log.Fatalf("Error executing template: %v", err)
 	}
+
+	if options.FormatterCommand != "" {
+		cmd_parts := strings.Split(options.FormatterCommand, " ")
+		execCommand := exec.Command(cmd_parts[0], cmd_parts[1:]...)
+		execCommand.Stdin = bytes.NewReader(buf.Bytes())
+		var output bytes.Buffer
+		execCommand.Stdout = &output
+		if err := execCommand.Run(); err != nil {
+			log.Fatalf("Error executing formatter command: %v", err)
+		}
+
+		buf = output
+	}
+
+	resp.Files = append(resp.Files, &plugin.File{
+		Name:     options.Filename,
+		Contents: buf.Bytes(),
+	})
 
 	return &resp, nil
 }

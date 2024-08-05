@@ -35,11 +35,11 @@ sql:
     queries: "queries.sql"
     schema: "schema.sql"
     codegen:
-    - out: backend/src/queries
+    - out: backend/src/backend/queries
       plugin: sqlc-gen-from-template
       options:
-        query_template: "query_template.go.tmpl"
-        query_file_extension: "scala"
+        template: "query_template.go.tmpl"
+        filename: "Queries.scala"
         # optional formatter command to format generated code
         formatter_cmd: ".devbox/nix/profile/default/bin/scalafmt --stdin"
 ```
@@ -81,6 +81,8 @@ package backend.queries
 
 import com.augustnagro.magnum
 import com.augustnagro.magnum.*
+
+{{- range .Queries }}
 
 {{range .Comments}}// {{.}}
 {{end}}
@@ -132,11 +134,13 @@ def {{.Name}}({{range .Params}}
   {{- if eq .Cmd ":many" }}.query[{{ $rowType }}].run(){{end}}
   {{- if eq .Cmd ":one" }}.query[{{ $rowType }}].run().head{{end}}
 }
+
+{{- end -}}
 ```
 
-Running `sqlc generate` generates files for every query:
+Running `sqlc generate` generates:
 
-`getReplyIds.scala`
+`Queries.scala`
 ```scala
 package backend.queries
 
