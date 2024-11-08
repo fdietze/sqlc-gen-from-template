@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"strings"
 	"text/template"
 
 	"github.com/sqlc-dev/plugin-sdk-go/codegen"
@@ -56,8 +55,7 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 	}
 
 	if options.FormatterCommand != "" {
-		cmd_parts := strings.Split(options.FormatterCommand, " ")
-		execCommand := exec.Command(cmd_parts[0], cmd_parts[1:]...)
+		execCommand := exec.Command("/usr/bin/env", "bash", "-c", options.FormatterCommand)
 		execCommand.Stdin = bytes.NewReader(buf.Bytes())
 		var output bytes.Buffer
 		execCommand.Stdout = &output
