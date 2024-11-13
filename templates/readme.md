@@ -6,7 +6,7 @@ If you come up with a template for a new language or database library, please co
 
 # Creating a new template from scratch
 
-Look at the [protobuf data structures provided by sqlc](https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto). They provide a list of queries and schemas. Imagine how you would turn them into your desired code. You probably want to loop over the queries and generate a return type and function for every query:
+Look at the [protobuf data structures provided by sqlc](https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto). They provide a list of queries and schemas. Imagine how you would turn them into your desired code. You probably want to loop over the queries and generate a return type and function for every query.
 
 It would look something like this:
 
@@ -14,14 +14,18 @@ It would look something like this:
 Loop over queries:
 {{range .Queries }}
 
+
+define return type:
 struct Row_{{ .Name }} {
   {{range .Columns}}
     {{.Name}}: {{.Type.Name}}
   {{end}}
 }
 
-
+decide if the query is :many, :exec, :one etc.
 {{if eq .Cmd ":many"}}
+
+define function:
 function {{.Name}} (
   {{range .Params}}
     {{.Column.Name}}:{{.Column.Type.Name}},
@@ -33,6 +37,7 @@ function {{.Name}} (
     ... execute query ...
 }
 {{end}}
+
 
 
 {{if eq .Cmd ":one" }}
