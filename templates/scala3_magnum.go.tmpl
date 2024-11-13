@@ -1,0 +1,93 @@
+{{- /* 
+https://pkg.go.dev/text/template
+https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto
+https://github.com/AugustNagro/magnum?tab=readme-ov-file
+*/ -}}
+
+{{- define "ScalaType" -}}
+{{- $scalaType := .Type.Name -}}
+{{- if eq .Type.Name "integer"}}{{ $scalaType = "Long" }}
+{{- else if eq .Type.Name "text"}}{{ $scalaType = "String" }}
+{{- end -}}
+{{- $scalaType }}
+{{- end -}}
+
+// This file is generated from queries.sql using queries_template.go.tmpl
+package backend.queries
+
+import com.augustnagro.magnum
+import com.augustnagro.magnum.*
+
+def fragWriter(params: Seq[Any]): FragWriter = { (preparedStatement, startPos) =>
+  var i = 0
+  val n = params.size
+  while (i < n) {
+    val param = params(i)
+    param match {
+      case param: Int    => preparedStatement.setInt(startPos + i, param)
+      case param: Long   => preparedStatement.setLong(startPos + i, param)
+      case param: String => preparedStatement.setString(startPos + i, param)
+      case param: Double => preparedStatement.setDouble(startPos + i, param)
+    }
+    i += 1
+  }
+  startPos + params.size
+}
+
+{{- range .Queries }}
+
+{{range .Comments}}// {{.}}
+{{end}}
+
+{{$rowType := printf "Row_%s" .Name -}}
+{{- if or (eq .Cmd ":many") (eq .Cmd ":one") }}
+  {{- if gt (len .Columns) 1 -}}
+    case class {{ $rowType }}({{- range .Columns}}
+    {{.Name}}:
+    {{- if not .NotNull }}Option[{{end}}
+    {{- template "ScalaType" .}}
+    {{- if not .NotNull }}]{{end}},
+    {{- end}}
+)
+  {{- else -}}
+
+
+    type {{ $rowType }} = 
+    {{- if not (index .Columns 0).NotNull }}Option[{{end}}
+    {{- template "ScalaType" (index .Columns 0) }}
+    {{- if not (index .Columns 0).NotNull }}]{{end}}
+  {{- end}}
+
+{{end}}
+
+
+{{- $returnType := "__DEFAULT__" -}}
+{{- if eq .Cmd ":exec" }}
+  {{- $returnType = "Unit" -}}
+{{- else if eq .Cmd ":many" }}
+  {{- $returnType = printf "Vector[%s]" $rowType -}}
+{{- else if eq .Cmd ":one" }}
+  {{- $returnType = $rowType -}}
+{{- else -}}
+  {{- $returnType = "__UNKNOWN_QUERY_ANNOTATION__" -}}
+{{- end -}}
+
+
+def {{.Name}}({{range .Params}}
+  {{.Column.Name}}:{{template "ScalaType" .Column}},
+{{- end}}
+)(using con: DbCon): {{ $returnType }} = {
+  val params = IArray({{range .Params}}
+  {{.Column.Name}},
+  {{end}})
+  val result = Frag("""
+  {{ .Text }}
+  """, params, fragWriter(params))
+  {{- if eq .Cmd ":exec" }}.update.run(){{end}}
+  {{- if eq .Cmd ":many" }}.query[{{ $rowType }}].run(){{end}}
+  {{- if eq .Cmd ":one" }}.query[{{ $rowType }}].run().head{{end}}
+  println(s"queries.{{.Name}}({{range $index, $param := .Params}}{{if $index}}, {{end}}{{$param.Column.Name}}=${ {{$param.Column.Name}} }{{end}}) => ${result}")
+  result
+}
+
+{{- end -}}

@@ -1,15 +1,13 @@
 # sqlc-gen-from-template
 
-[sqlc](https://sqlc.dev/) plugin to generate type-safe code for SQL queries using a template.
-
-Related project: [cornerman/scala-db-codegen](https://github.com/cornerman/scala-db-codegen)
+[sqlc](https://sqlc.dev/) plugin to generate type-safe code for SQL queries using a template. More specifically, it provides the [protobuf data structures provided by sqlc](https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto) to a [go template](https://pkg.go.dev/text/template) to turn [every query in a SQL file](https://docs.sqlc.dev/en/stable/tutorials/getting-started-sqlite.html#schema-and-queries) into a function and return type data structure of your preferred programming language and database library.
 
 ## Installation
 
-I recommend using [devbox](https://www.jetpack.io/devbox) and installing this plugin into your project using a flake: 
+I recommend using [devbox](https://www.jetpack.io/devbox) and installing this plugin into your project using a [nix flake](https://zero-to-nix.com/concepts/flakes):
 
 ```bash
-# replace <rev> with the latest commit from this repo
+# replace <rev> with the latest commit hash from this repo
 devbox add sqlc github:fdietze/sqlc-gen-from-template/<rev>
 ```
 
@@ -19,11 +17,20 @@ Alternatively, you can build a binary yourself and put it into your `PATH`:
 go build
 ```
 
+## Contributions
+
+Don't hesitate to ask any questions or present your ideas in the issues. Contributions are welcome!
+
+## Language Support
+
+See the [templates](./templates) directory for supported languages and database library combinations.
+
 ## Usage
 
 Example usage for [Scala](https://www.scala-lang.org/) with the [magnum](https://github.com/AugustNagro/magnum) database library:
 
 `sqlc.yml`
+
 ```yml
 version: "2"
 plugins:
@@ -45,6 +52,7 @@ sql:
 ```
 
 `schema.sql`
+
 ```sql
 create table post(
   id integer primary key autoincrement -- rowid
@@ -54,6 +62,7 @@ create table post(
 ```
 
 `queries.sql`
+
 ```sql
 -- name: getReplyIds :many
 select id
@@ -62,6 +71,7 @@ where parent_id = ?;
 ```
 
 `query_template.go.tmpl`
+
 ```tmpl
 {{- /* 
 https://pkg.go.dev/text/template
@@ -141,6 +151,7 @@ def {{.Name}}({{range .Params}}
 Running `sqlc generate` generates:
 
 `Queries.scala`
+
 ```scala
 package backend.queries
 
@@ -165,3 +176,7 @@ where parent_id = ?
   ).query[Row_getReplyIds].run()
 }
 ```
+
+# Related Projects
+
+- [cornerman/scala-db-codegen](https://github.com/cornerman/scala-db-codegen)

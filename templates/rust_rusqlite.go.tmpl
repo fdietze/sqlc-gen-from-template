@@ -1,0 +1,99 @@
+{{- /* 
+https://docs.sqlc.dev/en/stable/reference/query-annotations.html
+https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto
+https://github.com/rusqlite/rusqlite
+https://pkg.go.dev/text/template
+*/ -}}
+
+{{- define "RustType" -}}
+{{- $rustType := .Type.Name -}}
+{{- if eq .Type.Name "integer"}}{{ $rustType = "i64" }}
+{{- else if eq .Type.Name "text"}}{{ $rustType = "String" }}
+{{- end -}}
+{{- $rustType }}
+{{- end -}}
+
+// This file is generated from queries.sql using queries_template.go.tmpl
+
+
+#[allow(unused)]
+use rusqlite::OptionalExtension;
+
+{{- range .Queries }}
+
+{{range .Comments}}// {{.}}
+{{end}}
+
+{{$rowType := printf "Row_%s" .Name -}}
+{{- if or (eq .Cmd ":many") (eq .Cmd ":one") }}
+    #[derive(Debug)]
+    #[allow(non_camel_case_types)]
+    pub struct {{ $rowType }} { {{- range .Columns}}
+    pub {{.Name}}:
+    {{- if not .NotNull }}Option<{{end}}
+    {{- template "RustType" .}}
+    {{- if not .NotNull }}>{{end}},
+    {{- end}}
+}
+
+{{end}}
+
+
+
+
+
+
+{{- if eq .Cmd ":many" }}
+{{- $returnType := printf "Vec<%s>" $rowType -}}
+pub fn {{.Name}}({{range .Params}}
+  {{.Column.Name}}:{{template "RustType" .Column}},
+{{- end}}
+ conn: &rusqlite::Connection
+ ) -> Result<{{ $returnType }}, rusqlite::Error> {
+
+    let mut stmt = conn.prepare(r#"{{ .Text }}"#)?;
+    let result : Result<{{ $returnType }}, rusqlite::Error> = stmt
+        .query_map([{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
+            Ok({{$rowType}} { {{- range $index, $column := .Columns}}
+              {{.Name}}: row.get({{$index}})?,
+            {{- end}} })
+        })?
+        .collect();
+    result
+}
+{{- end -}}
+
+
+
+{{- if eq .Cmd ":one" }}
+{{- $returnType := printf "Option<%s>" $rowType -}}
+pub fn {{.Name}}({{range .Params}}
+  {{.Column.Name}}:{{template "RustType" .Column}},
+{{- end}}
+ conn: &rusqlite::Connection
+ ) -> Result<{{ $returnType }}, rusqlite::Error> {
+
+    let mut stmt = conn.prepare(r#"{{ .Text }}"#)?;
+    let result : Result<{{ $returnType }}, rusqlite::Error> = stmt
+        .query_row([{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
+            Ok({{$rowType}} { {{- range $index, $column := .Columns}}
+              {{.Name}}: row.get({{$index}})?,
+            {{- end}} })
+        }).optional();
+    result
+}
+{{- end -}}
+
+
+{{- if eq .Cmd ":exec" }}
+pub fn {{.Name}}({{range .Params}}
+  {{.Column.Name}}:{{template "RustType" .Column}},
+{{- end}}
+ conn: &rusqlite::Connection
+ ) -> Result<usize, rusqlite::Error> {
+    conn.execute(r#"{{ .Text }}"#, ({{range .Params}} {{.Column.Name}}, {{end}}))
+}
+{{- end -}}
+
+
+{{- end -}}
