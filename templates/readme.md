@@ -1,6 +1,6 @@
 # Languages and Database Libraries
 
-To use a template, copy the respective file into your repo, set it in the `sqlc.yaml` and commit it. Don't hesitate to adjust it to your needs. Every project has different requirements.
+To use a template, copy the respective file into your repo, set it in the `sqlc.yaml` and commit it along with the generated code. Don't hesitate to adjust it to your needs. Every project has different requirements. Commiting the template and the generated code allows to to see diffs once you change the template or add new queries.
 
 If you come up with a template for a new language or database library, please contribute it, even if it is not perfect. It might be a good starting point for someone else.
 
