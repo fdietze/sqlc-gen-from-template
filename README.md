@@ -17,6 +17,11 @@ Alternatively, you can build a binary yourself and put it into your `PATH`:
 go build
 ```
 
+Afterwards you can generate code with:
+```bash
+sqlc generate
+```
+
 ## Contributions
 
 Don't hesitate to ask any questions or present your ideas in the issues. Contributions are welcome!
@@ -81,8 +86,8 @@ https://github.com/AugustNagro/magnum?tab=readme-ov-file
 
 {{- define "ScalaType" -}}
 {{- $scalaType := .Type.Name -}}
-{{- if eq .Type.Name "integer"}}{{ $scalaType = "Long" }}
-{{- else if eq .Type.Name "text"}}{{ $scalaType = "String" }}
+{{- if eq .Type.Name "INTEGER"}}{{ $scalaType = "Long" }}
+{{- else if eq .Type.Name "TEXT"}}{{ $scalaType = "String" }}
 {{- end -}}
 {{- $scalaType }}
 {{- end -}}
