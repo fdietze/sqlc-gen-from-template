@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 	"text/template"
 
 	"github.com/sqlc-dev/plugin-sdk-go/codegen"
@@ -41,13 +42,43 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 	options, _ := parseOpts(req)
 	templateFileName := options.Template
 
-	tmpl, err := template.ParseFiles(templateFileName)
+	pluginOptions := make(map[string]any)
+	err := json.Unmarshal(req.PluginOptions, &pluginOptions)
+	if err != nil {
+		log.Fatal("failed to unmarshal plugin options: ", err)
+	}
+
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+		"GetPluginOption": func(name string) any {
+			option, ok := pluginOptions[name]
+			if !ok {
+				return ""
+			}
+			return option
+		},
+		"Contains": strings.Contains,
+	}
+
+	tmpl, err := template.New(templateFileName).Funcs(funcMap).ParseFiles(templateFileName)
 	if err != nil {
 		log.Fatalf("Error parsing template file: %v", err)
 	}
 
 	resp := plugin.GenerateResponse{}
-
+	for i := range req.Queries {
+		paramMap := make(map[string]int)
+		for j := range req.Queries[i].Params {
+			colName := req.Queries[i].Params[j].Column.Name
+			val, ok := paramMap[colName]
+			if !ok {
+				paramMap[colName] = 1
+				continue
+			}
+			paramMap[colName] = val + 1
+			req.Queries[i].Params[j].Column.Name = colName + fmt.Sprintf("%v", val)
+		}
+	}
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, req)
 	if err != nil {

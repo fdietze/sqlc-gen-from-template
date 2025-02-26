@@ -5,19 +5,39 @@ https://github.com/rusqlite/rusqlite
 https://pkg.go.dev/text/template
 */ -}}
 
+
+{{- $CacheStatementsGlobal :=  "cache_statements" | GetPluginOption -}}
+
 {{- define "RustType" -}}
 {{- $rustType := .Type.Name -}}
-{{- if eq .Type.Name "integer"}}{{ $rustType = "i64" }}
-{{- else if eq .Type.Name "text"}}{{ $rustType = "String" }}
+{{- $TypeName :=   .Type.Name | ToLower  -}}
+{{- if eq $TypeName "integer"}}{{ $rustType = "i64" }}
+{{- else if eq $TypeName "text"}}{{ $rustType = "String" }}
+{{- else if eq $TypeName "blob"}}{{ $rustType = "Vec<u8>" }}
+{{- else if eq $TypeName "real"}}{{ $rustType = "f64" }}
+{{- else if eq $TypeName "float"}}{{ $rustType = "f64" }}
+{{- else if eq $TypeName "double"}}{{ $rustType = "f64" }}
+{{- else if eq $TypeName "boolean"}}{{ $rustType = "bool" }}
+{{- else if eq $TypeName "bool"}}{{ $rustType = "bool" }}
 {{- end -}}
 {{- $rustType }}
 {{- end -}}
 
-// This file is generated from queries.sql using queries_template.go.tmpl
-
+/* This file is generated from queries.sql using rust_rusqlite.go.tmpl
+  This template supports the following plugin options from sqlc.yaml
+    cache_statements: true/false # set whether to default to prepare_cached instead of prepare for
+    use_serde: true/false # set whether to import serde and annotate generated structs appropriately
+  This template will not generate a mod.rs file if the destination file is in a module you'll need to add one manually
+  .sql files containing queries can be used to override cache_statements option.
+    if nocache appears anywhere in the filename the queries in the file will all use prepare_cached
+    if cache appears, (but not nocache) anywhere in the filename the queries will all use prepare
+*/
 
 #[allow(unused)]
-use rusqlite::OptionalExtension;
+use rusqlite::{params,OptionalExtension};
+{{- if GetPluginOption "use_serde" }}
+use serde::{Serialize, Deserialize};
+{{- end -}}
 
 {{- range .Queries }}
 
@@ -26,7 +46,11 @@ use rusqlite::OptionalExtension;
 
 {{$rowType := printf "Row_%s" .Name -}}
 {{- if or (eq .Cmd ":many") (eq .Cmd ":one") }}
+    {{ if GetPluginOption "use_serde" -}}
+    #[derive(Serialize, Deserialize, Debug)]
+    {{- else -}}
     #[derive(Debug)]
+    {{- end }}
     #[allow(non_camel_case_types)]
     pub struct {{ $rowType }} { {{- range .Columns}}
     pub {{.Name}}:
@@ -37,23 +61,25 @@ use rusqlite::OptionalExtension;
 }
 
 {{end}}
-
-
-
-
-
+{{- $CacheStatements := $CacheStatementsGlobal -}}
+{{- if (Contains (ToLower .Filename) "cache") -}}
+  {{- $CacheStatements = true -}}
+{{- end -}}
+{{- if (Contains (ToLower .Filename) "nocache") -}}
+  {{- $CacheStatements = false -}}
+{{- end -}}
 
 {{- if eq .Cmd ":many" }}
 {{- $returnType := printf "Vec<%s>" $rowType -}}
-pub fn {{.Name}}({{range .Params}}
-  {{.Column.Name}}:{{template "RustType" .Column}},
+pub fn {{.Name}}(conn: &rusqlite::Connection{{range .Params}},
+  {{.Column.Name}}:{{template "RustType" .Column}}
 {{- end}}
- conn: &rusqlite::Connection
+
  ) -> Result<{{ $returnType }}, rusqlite::Error> {
 
-    let mut stmt = conn.prepare(r#"{{ .Text }}"#)?;
+    let mut stmt = {{- if $CacheStatements -}}conn.prepare_cached{{- else -}}conn.prepare{{- end -}}(r#"{{ .Text }}"#)?;
     let result : Result<{{ $returnType }}, rusqlite::Error> = stmt
-        .query_map([{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
+        .query_map(params![{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
             Ok({{$rowType}} { {{- range $index, $column := .Columns}}
               {{.Name}}: row.get({{$index}})?,
             {{- end}} })
@@ -67,15 +93,15 @@ pub fn {{.Name}}({{range .Params}}
 
 {{- if eq .Cmd ":one" }}
 {{- $returnType := printf "Option<%s>" $rowType -}}
-pub fn {{.Name}}({{range .Params}}
-  {{.Column.Name}}:{{template "RustType" .Column}},
+pub fn {{.Name}}(conn: &rusqlite::Connection{{range .Params}},
+  {{.Column.Name}}:{{template "RustType" .Column}}
 {{- end}}
- conn: &rusqlite::Connection
+
  ) -> Result<{{ $returnType }}, rusqlite::Error> {
 
-    let mut stmt = conn.prepare(r#"{{ .Text }}"#)?;
+    let mut stmt = {{- if $CacheStatements -}}conn.prepare_cached{{- else -}}conn.prepare{{- end -}}(r#"{{ .Text }}"#)?;
     let result : Result<{{ $returnType }}, rusqlite::Error> = stmt
-        .query_row([{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
+        .query_row(params![{{range .Params}} {{.Column.Name}}, {{end}}], |row| {
             Ok({{$rowType}} { {{- range $index, $column := .Columns}}
               {{.Name}}: row.get({{$index}})?,
             {{- end}} })
@@ -86,10 +112,10 @@ pub fn {{.Name}}({{range .Params}}
 
 
 {{- if eq .Cmd ":exec" }}
-pub fn {{.Name}}({{range .Params}}
-  {{.Column.Name}}:{{template "RustType" .Column}},
+pub fn {{.Name}}(conn: &rusqlite::Connection{{range .Params}},
+  {{.Column.Name}}:{{template "RustType" .Column}}
 {{- end}}
- conn: &rusqlite::Connection
+
  ) -> Result<usize, rusqlite::Error> {
     conn.execute(r#"{{ .Text }}"#, ({{range .Params}} {{.Column.Name}}, {{end}}))
 }
