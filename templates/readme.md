@@ -4,6 +4,9 @@ To use a template, copy the respective file into your repo, set it in the `sqlc.
 
 If you come up with a template for a new language or database library, please contribute it, even if it is not perfect. It might be a good starting point for someone else.
 
+A test project for the rustql version that could be used as a simple project template is available at [https://github.com/ReenigneCA/rust_sqlc_test](https://github.com/ReenigneCA/rust_sqlc_test)
+
+
 # Creating a new template from scratch
 
 Look at the [protobuf data structures provided by sqlc](https://github.com/sqlc-dev/sqlc/blob/main/protos/plugin/codegen.proto). They provide a list of queries and schemas. Imagine how you would turn them into your desired code. You probably want to loop over the queries and generate a return type and function for every query.
