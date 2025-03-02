@@ -57,7 +57,7 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 			}
 			return option
 		},
-		"Split": strings.Split,
+		"Split":   strings.Split,
 		"ToLower": strings.ToLower,
 	}
 
