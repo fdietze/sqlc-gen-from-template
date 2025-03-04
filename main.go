@@ -51,6 +51,7 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 
 	funcMap := template.FuncMap{
 		"Contains": strings.Contains,
+		// https://stackoverflow.com/a/18276968/1149933
 		"Dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
