@@ -49,7 +49,7 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 	}
 
 	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
+		"Contains": strings.Contains,
 		"GetPluginOption": func(name string) any {
 			option, ok := pluginOptions[name]
 			if !ok {
@@ -57,7 +57,8 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 			}
 			return option
 		},
-		"Contains": strings.Contains,
+		"Split":   strings.Split,
+		"ToLower": strings.ToLower,
 	}
 
 	tmpl, err := template.New(templateFileName).Funcs(funcMap).ParseFiles(templateFileName)
