@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+	"path/filepath"
 
 	"github.com/sqlc-dev/plugin-sdk-go/codegen"
 	"github.com/sqlc-dev/plugin-sdk-go/plugin"
@@ -77,7 +78,12 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 		"ToLower": strings.ToLower,
 	}
 
-	tmpl, err := template.New(templateFileName).Funcs(funcMap).ParseFiles(templateFileName)
+	absPath, err := filepath.Abs(templateFileName)
+	if err != nil {
+		log.Fatalf("Failed to resolve absolute path for template: %v", err)
+	}
+
+	tmpl, err := template.New(filepath.Base(absPath)).Funcs(funcMap).ParseFiles(absPath)
 	if err != nil {
 		log.Fatalf("Error parsing template file: %v", err)
 	}
