@@ -76,6 +76,7 @@ func generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 		},
 		"Split":   strings.Split,
 		"ToLower": strings.ToLower,
+		"ToUpper": strings.ToUpper,
 	}
 
 	absPath, err := filepath.Abs(templateFileName)
